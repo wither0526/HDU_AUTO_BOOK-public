@@ -50,9 +50,14 @@ class SeatAutoBooker:
             print("没有Server酱的key,将不会推送消息")
 
         chrome_options = Options()
-        # chrome_options.add_argument('--headless')  # 注释掉可以看到浏览器窗口，便于调试
+        # 在GitHub Actions环境中必须使用headless模式
+        chrome_options.add_argument('--headless=new')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
+        chrome_options.add_argument('--disable-gpu')
+        chrome_options.add_argument('--disable-extensions')
+        chrome_options.add_argument('--remote-debugging-port=9222')
+        chrome_options.add_argument('--window-size=1920,1080')
         
         # 尝试多种方式加载 chromedriver
         try:
