@@ -108,34 +108,41 @@ class SeatAutoBooker:
     def login(self):
         logging.info('Login in')
 
-        pwd_path_selector = """//*[@id="react-root"]/div/div/div[1]/div[2]/div/div[1]/div[2]/div/div/div/div/div[1]/div[2]/div/div[3]/div/div[2]/input"""
-        button_path_selector = """//*[@id="react-root"]/div/div/div[1]/div[2]/div/div[1]/div[2]/div/div/div/div/div[1]/div[3]"""
-
         try:
             logging.info('开始登陆...')
 
+            # 改为登录到 SSO 系统而不是图书馆网站
             self.driver.get("https://hdu.huitu.zhishulib.com/")
-            logging.debug('打开网站.')
+            logging.debug('打开SSO登录网站.')
 
-            self.wait.until(EC.presence_of_element_located((By.NAME, "login_name")))
+            # 等待用户名输入框出现
+            self.wait.until(EC.presence_of_element_located((By.NAME, "username")))
             logging.debug('找到用户名输入框.')
 
-            self.wait.until(EC.presence_of_element_located((By.XPATH, pwd_path_selector)))
+            # 等待密码输入框出现
+            self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='password']")))
             logging.debug('找到密码输入框.')
 
-            self.wait.until(EC.presence_of_element_located((By.XPATH, button_path_selector)))
+            # 等待登录按钮出现
+            self.wait.until(EC.presence_of_element_located((By.CLASS_NAME, "login-button")))
             logging.debug('找到登录按钮.')
 
-            self.driver.find_element(By.NAME, 'login_name').clear()
-            self.driver.find_element(By.NAME, 'login_name').send_keys(self.un)  # 传送帐号
+            # 输入用户名
+            self.driver.find_element(By.NAME, 'username').clear()
+            self.driver.find_element(By.NAME, 'username').send_keys(self.un)
             logging.info('输入用户名')
 
-            self.driver.find_element(By.XPATH, pwd_path_selector).clear()
-            self.driver.find_element(By.XPATH, pwd_path_selector).send_keys(self.pd)  # 输入密码
+            # 输入密码
+            self.driver.find_element(By.CSS_SELECTOR, "input[type='password']").clear()
+            self.driver.find_element(By.CSS_SELECTOR, "input[type='password']").send_keys(self.pd)
             logging.info('输入密码')
+
+            # 点击登录按钮
             logging.info('点击登录按钮')
-            self.driver.find_element(By.XPATH, button_path_selector).click()
+            self.driver.find_element(By.CLASS_NAME, "login-button").click()
             time.sleep(5)
+
+            # 获取 Cookie
             cookie_list = self.driver.get_cookies()
             self.cookie = ";".join([item["name"] + "=" + item["value"] + "" for item in cookie_list])
             self.cfg["headers"]['Cookie'] = self.cookie
