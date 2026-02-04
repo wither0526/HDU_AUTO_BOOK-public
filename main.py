@@ -50,10 +50,30 @@ class SeatAutoBooker:
             print("没有Server酱的key,将不会推送消息")
 
         chrome_options = Options()
-        chrome_options.add_argument('--headless')
+        # chrome_options.add_argument('--headless')  # 注释掉可以看到浏览器窗口，便于调试
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
-        self.driver = webdriver.Chrome(service=Service('/usr/local/bin/chromedriver'), options=chrome_options)
+        
+        # 尝试多种方式加载 chromedriver
+        try:
+            # 方式1：Windows 下自动下载匹配的 chromedriver
+            self.driver = webdriver.Chrome(options=chrome_options)
+            logging.info('使用自动下载的 ChromeDriver')
+        except Exception as e1:
+            logging.warning(f'自动下载 ChromeDriver 失败: {e1}')
+            try:
+                # 方式2：尝试 Linux 路径（GitHub Actions）
+                self.driver = webdriver.Chrome(service=Service('/usr/local/bin/chromedriver'), options=chrome_options)
+                logging.info('使用 Linux 路径的 ChromeDriver')
+            except Exception as e2:
+                logging.warning(f'Linux 路径 ChromeDriver 失败: {e2}')
+                try:
+                    # 方式3：尝试从 PATH 环境变量中查找
+                    self.driver = webdriver.Chrome(options=chrome_options)
+                    logging.info('使用 PATH 中的 ChromeDriver')
+                except Exception as e3:
+                    logging.error(f'无法加载 ChromeDriver: {e3}')
+                    raise
         self.wait = WebDriverWait(self.driver, 10, 0.5)
         self.cookie = None
 
@@ -111,9 +131,10 @@ class SeatAutoBooker:
         try:
             logging.info('开始登陆...')
 
-            # 改为登录到 SSO 系统而不是图书馆网站
-            self.driver.get("https://hdu.huitu.zhishulib.com/")
-            logging.debug('打开SSO登录网站.')
+            # 通过 SSO 系统登录
+            sso_url = "https://sso.hdu.edu.cn/login?service=https:%2F%2Fhdu.huitu.zhishulib.com%2FUser%2FIndex%2FhduCASLogin%3Fforward%3D%252FSpace%252FCategory%252Fredirect%253Fcategory_id%253D591"
+            self.driver.get(sso_url)
+            logging.info('打开SSO登录页面: ' + sso_url)
 
             # 等待用户名输入框出现
             self.wait.until(EC.presence_of_element_located((By.NAME, "username")))
@@ -128,28 +149,41 @@ class SeatAutoBooker:
             logging.debug('找到登录按钮.')
 
             # 输入用户名
-            self.driver.find_element(By.NAME, 'username').clear()
-            self.driver.find_element(By.NAME, 'username').send_keys(self.un)
-            logging.info('输入用户名')
+            username_input = self.driver.find_element(By.NAME, 'username')
+            username_input.clear()
+            username_input.send_keys(self.un)
+            logging.info('输入用户名: {}'.format(self.un))
 
             # 输入密码
-            self.driver.find_element(By.CSS_SELECTOR, "input[type='password']").clear()
-            self.driver.find_element(By.CSS_SELECTOR, "input[type='password']").send_keys(self.pd)
+            password_input = self.driver.find_element(By.CSS_SELECTOR, "input[type='password']")
+            password_input.clear()
+            password_input.send_keys(self.pd)
             logging.info('输入密码')
 
             # 点击登录按钮
             logging.info('点击登录按钮')
-            self.driver.find_element(By.CLASS_NAME, "login-button").click()
+            login_button = self.driver.find_element(By.CLASS_NAME, "login-button")
+            login_button.click()
+            
+            # 等待登录完成并重定向
             time.sleep(5)
+            logging.info('登录完成，当前URL: {}'.format(self.driver.current_url))
 
             # 获取 Cookie
             cookie_list = self.driver.get_cookies()
             self.cookie = ";".join([item["name"] + "=" + item["value"] + "" for item in cookie_list])
             self.cfg["headers"]['Cookie'] = self.cookie
+            logging.info('获取Cookie成功，Cookie数量: {}'.format(len(cookie_list)))
 
             logging.info("登录成功！")
         except Exception as e:
             logging.error(f"登录失败：{e}")
+            # 保存截图以便调试
+            try:
+                self.driver.save_screenshot("login_error.png")
+                logging.info("已保存错误截图为 login_error.png")
+            except:
+                pass
             return -1
         return 0
 
@@ -197,11 +231,11 @@ def is_booking_enable(date_cfg):
 
 if __name__ == "__main__":
     logging.info('Start of the program')
-    with open("user_config.yml", 'r') as f_obj:
+    with open("user_config.yml", 'r', encoding='utf-8') as f_obj:
         user_config = yaml.safe_load(f_obj)
-    with open("config/basic_config.yml", 'r') as f_obj:
+    with open("config/basic_config.yml", 'r', encoding='utf-8') as f_obj:
         basic_config = yaml.safe_load(f_obj)
-    with open("config/seat_config.yml", 'r') as f_obj:
+    with open("config/seat_config.yml", 'r', encoding='utf-8') as f_obj:
         seat_config = yaml.safe_load(f_obj)
 
     the_day_after_tomorrow = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'][(datetime.now().weekday() + 2) % 7]
