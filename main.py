@@ -50,30 +50,42 @@ class SeatAutoBooker:
             print("没有Server酱的key,将不会推送消息")
 
         chrome_options = Options()
-        # chrome_options.add_argument('--headless')  # 注释掉可以看到浏览器窗口，便于调试
+        #chrome_options.add_argument('--headless')  # 注释掉可以看到浏览器窗口，便于调试
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
         
         # 尝试多种方式加载 chromedriver
+        chromedriver_path = None
+        
+        # 方式1：检查环境变量
+        if 'CHROMEDRIVER_PATH' in os.environ:
+            chromedriver_path = os.environ['CHROMEDRIVER_PATH']
+        
+        # 方式2：检查 Windows 缓存目录
+        if not chromedriver_path:
+            cache_dir = os.path.expanduser('~/.cache/selenium/chromedriver')
+            if os.path.exists(cache_dir):
+                # 找最新的 chromedriver
+                for root, dirs, files in os.walk(cache_dir):
+                    if 'chromedriver.exe' in files:
+                        chromedriver_path = os.path.join(root, 'chromedriver.exe')
+                        break
+        
+        # 方式3：尝试 Linux 路径（GitHub Actions）
+        if not chromedriver_path and os.path.exists('/usr/local/bin/chromedriver'):
+            chromedriver_path = '/usr/local/bin/chromedriver'
+        
         try:
-            # 方式1：Windows 下自动下载匹配的 chromedriver
-            self.driver = webdriver.Chrome(options=chrome_options)
-            logging.info('使用自动下载的 ChromeDriver')
-        except Exception as e1:
-            logging.warning(f'自动下载 ChromeDriver 失败: {e1}')
-            try:
-                # 方式2：尝试 Linux 路径（GitHub Actions）
-                self.driver = webdriver.Chrome(service=Service('/usr/local/bin/chromedriver'), options=chrome_options)
-                logging.info('使用 Linux 路径的 ChromeDriver')
-            except Exception as e2:
-                logging.warning(f'Linux 路径 ChromeDriver 失败: {e2}')
-                try:
-                    # 方式3：尝试从 PATH 环境变量中查找
-                    self.driver = webdriver.Chrome(options=chrome_options)
-                    logging.info('使用 PATH 中的 ChromeDriver')
-                except Exception as e3:
-                    logging.error(f'无法加载 ChromeDriver: {e3}')
-                    raise
+            if chromedriver_path:
+                logging.info(f'使用指定的 ChromeDriver: {chromedriver_path}')
+                self.driver = webdriver.Chrome(service=Service(chromedriver_path), options=chrome_options)
+            else:
+                # 最后的办法：让 Selenium Manager 自动下载
+                logging.info('使用 Selenium Manager 自动下载 ChromeDriver')
+                self.driver = webdriver.Chrome(options=chrome_options)
+        except Exception as e:
+            logging.error(f'无法加载 ChromeDriver: {e}')
+            raise
         self.wait = WebDriverWait(self.driver, 10, 0.5)
         self.cookie = None
 
