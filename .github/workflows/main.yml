@@ -3,8 +3,10 @@ name: HDU Auto Book
 on:
   workflow_dispatch:
   schedule:
-    - cron: '57 11 * * *'
-    - cron: '57 12 * * *'
+    # 生活区/自习室 20:30 CST 开抢, 用户想 20:35 开始
+    - cron: '35 12 * * 1-5'
+    # 阅览室备用
+    - cron: '57 12 * * 1-5'
 
 jobs:
   bot:
@@ -26,11 +28,11 @@ jobs:
           echo "Chrome version is ${CHROME_VERSION}"
           DRIVER_URL=$(curl -s 'https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json' | jq -r --arg version $CHROME_VERSION '.versions[] | select(.version | startswith($version)) | .downloads.chromedriver[] | select(.platform == "linux64") | .url' | tail -1)
           curl --silent --show-error --location --fail --retry 3 --output /tmp/chromedriver_linux64.zip $DRIVER_URL
-          cd /tmp 
-          unzip chromedriver_linux64.zip 
-          rm -rf chromedriver_linux64.zip 
-          sudo mv chromedriver-linux64/chromedriver /usr/local/bin/chromedriver 
-          sudo chmod +x /usr/local/bin/chromedriver 
+          cd /tmp
+          unzip chromedriver_linux64.zip
+          rm -rf chromedriver_linux64.zip
+          sudo mv chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
+          sudo chmod +x /usr/local/bin/chromedriver
           chromedriver --version
       - name: Auto Book
         env:
